@@ -1,0 +1,19 @@
+meta_learner: nearest_neighbor
+learner_params:
+  hidden_size: 256
+  num_outputs:
+    ner: var
+  embed_dim: 768
+vectors: bert
+num_shots:
+  ner: 5
+num_updates: 5
+num_test_samples:
+  ner: 5
+num_train_episodes:
+  ner: 50
+num_val_episodes:
+  ner: 10
+num_test_episodes:
+  ner: 30
+device: cuda:0,1

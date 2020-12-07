@@ -2,8 +2,8 @@ import coloredlogs
 import logging
 import torch
 import torchtext
-from allennlp.modules import Elmo
-from allennlp.modules.elmo import batch_to_ids
+# from allennlp.modules import Elmo
+# from allennlp.modules.elmo import batch_to_ids
 from scipy.spatial.distance import cdist
 from sklearn import metrics
 import numpy as np

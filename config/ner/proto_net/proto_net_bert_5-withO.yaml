@@ -1,0 +1,26 @@
+meta_learner: proto_net
+meta_model: seq
+learner_model: bert
+learner_params:
+  hidden_size: 192
+  num_outputs:
+    ner: var
+  embed_dim: 768
+  dropout_ratio: 0
+  fine_tune_layers: 0
+vectors: bert
+meta_lr: 0.00001
+num_shots:
+  ner: 5
+num_updates: 5
+num_test_samples:
+  ner: 5
+num_train_episodes:
+  ner: 32
+num_val_episodes:
+  ner: 30
+num_test_episodes:
+  ner: 30
+num_meta_epochs: 200
+early_stopping: 2
+device: cuda:0

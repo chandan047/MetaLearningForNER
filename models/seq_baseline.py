@@ -1,6 +1,6 @@
 import torchtext
-from allennlp.modules import Elmo
-from allennlp.modules.elmo import batch_to_ids
+# from allennlp.modules import Elmo
+# from allennlp.modules.elmo import batch_to_ids
 
 from models import utils
 from models.base_models import RNNSequenceModel, MLPModel

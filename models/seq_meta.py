@@ -3,8 +3,8 @@ import math
 
 import higher
 import torchtext
-from allennlp.modules import Elmo
-from allennlp.modules.elmo import batch_to_ids
+# from allennlp.modules import Elmo
+# from allennlp.modules.elmo import batch_to_ids
 from transformers import BertTokenizer
 
 from models import utils
@@ -140,7 +140,7 @@ class SeqMetaModel(nn.Module):
                     self.output_layer_bias = self.output_layer_bias - self.output_lr * output_bias_grad
 
                     # Update the shared parameters
-                    diffopt.step(loss)
+                    diffopt.step(loss, retain_graph=True)
 
                 relevant_indices = torch.nonzero(batch_y != -1).view(-1).detach()
                 pred = make_prediction(output[relevant_indices].detach()).cpu()

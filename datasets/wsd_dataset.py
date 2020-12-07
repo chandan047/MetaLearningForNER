@@ -101,6 +101,8 @@ class MetaWSDDataset(data.Dataset):
             self.sentences.append(entry['sentence'])
             self.labels.append(entry['label'])
         self.n_classes = np.max(list(itertools.chain(*self.labels))) + 1
+        print (self.sentences[:5])
+        print (self.labels[:5])
 
     def __len__(self):
         return len(self.sentences)

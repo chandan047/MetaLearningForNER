@@ -3,17 +3,21 @@ import logging
 import os
 import torch
 import numpy as np
+from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 
 from models.seq_proto import SeqPrototypicalNetwork
 
 logger = logging.getLogger('ProtoLearningLog')
 coloredlogs.install(logger=logger, level='DEBUG', fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-tensorboard_writer = SummaryWriter(log_dir='runs/ProtoNet')
 
 
 class PrototypicalNetwork:
     def __init__(self, config):
+        now = datetime.now()
+        date_time = now.strftime("%m-%d-%H-%M-%S")
+        self.tensorboard_writer = SummaryWriter(log_dir='runs/ProtoNet-' + date_time)
+        
         self.base_path = config['base_path']
         self.stamp = config['stamp']
         self.updates = config['num_updates']
@@ -33,7 +37,7 @@ class PrototypicalNetwork:
         model_path = os.path.join(self.base_path, 'saved_models', 'ProtoNet-{}.h5'.format(self.stamp))
         logger.info('Model name: ProtoNet-{}.h5'.format(self.stamp))
         for epoch in range(self.meta_epochs):
-            logger.info('Starting epoch {}'.format(epoch + 1))
+            logger.info('Starting epoch {}/{}'.format(epoch + 1, self.meta_epochs))
             losses, accuracies, precisions, recalls, f1s = self.proto_model(train_episodes, self.updates)
             avg_loss = np.mean(losses)
             avg_accuracy = np.mean(accuracies)
@@ -45,7 +49,8 @@ class PrototypicalNetwork:
                         'avg recall = {:.5f}, avg F1 score = {:.5f}'.format(epoch + 1, avg_loss, avg_accuracy,
                                                                             avg_precision, avg_recall, avg_f1))
 
-            tensorboard_writer.add_scalar('Loss/train', avg_loss, global_step=epoch + 1)
+            self.tensorboard_writer.add_scalar('Loss/train', avg_loss, global_step=epoch + 1)
+            self.tensorboard_writer.add_scalar('F1/train', avg_f1, global_step=epoch + 1)
 
             losses, accuracies, precisions, recalls, f1s = self.proto_model(val_episodes, self.updates, testing=True)
 
@@ -59,7 +64,8 @@ class PrototypicalNetwork:
                         'avg recall = {:.5f}, avg F1 score = {:.5f}'.format(epoch + 1, avg_loss, avg_accuracy,
                                                                             avg_precision, avg_recall, avg_f1))
 
-            tensorboard_writer.add_scalar('Loss/val', avg_loss, global_step=epoch + 1)
+            self.tensorboard_writer.add_scalar('Loss/val', avg_loss, global_step=epoch + 1)
+            self.tensorboard_writer.add_scalar('F1/val', avg_f1, global_step=epoch + 1)
 
             if avg_f1 > best_f1 + self.stopping_threshold:
                 patience = 0
@@ -76,12 +82,12 @@ class PrototypicalNetwork:
                     break
 
             # Log params and grads into tensorboard
-            for name, param in self.proto_model.named_parameters():
-                if param.requires_grad and param.grad is not None:
-                    tensorboard_writer.add_histogram('Params/' + name, param.data.view(-1),
-                                                     global_step=epoch + 1)
-                    tensorboard_writer.add_histogram('Grads/' + name, param.grad.data.view(-1),
-                                                     global_step=epoch + 1)
+#             for name, param in self.proto_model.named_parameters():
+#                 if param.requires_grad and param.grad is not None:
+#                     self.tensorboard_writer.add_histogram('Params/' + name, param.data.view(-1),
+#                                                      global_step=epoch + 1)
+#                     self.tensorboard_writer.add_histogram('Grads/' + name, param.grad.data.view(-1),
+#                                                      global_step=epoch + 1)
 
         self.proto_model.learner.load_state_dict(torch.load(model_path))
         return best_f1

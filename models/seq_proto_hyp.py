@@ -14,12 +14,13 @@ from transformers import BertTokenizer, AdamW, get_constant_schedule_with_warmup
 from models import utils
 from models.base_models import RNNSequenceModel, MLPModel, BERTSequenceModel
 from models.utils import make_prediction
+from models.utils import EuclideanDistance, EuclideanMean, HyperbolicDistance, HyperbolicMean
 
 logger = logging.getLogger('Log')
 coloredlogs.install(logger=logger, level='DEBUG', fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
-class SeqPrototypicalNetwork(nn.Module):
+class SeqPrototypicalHyperbolicNetwork(nn.Module):
     def __init__(self, config):
         super(SeqPrototypicalNetwork, self).__init__()
         self.base_path = config['base_path']
@@ -113,6 +114,7 @@ class SeqPrototypicalNetwork(nn.Module):
             support_repr, support_label = [], []
 
             batch_x_repr = self.learner(batch_x, batch_len)
+            
             support_repr.append(batch_x_repr)
             support_label.append(batch_y)
 
@@ -182,4 +184,10 @@ class SeqPrototypicalNetwork(nn.Module):
             tuple([q.sub(p).pow(2).sum(dim=-1) for p in prototypes]),
             dim=-1
         )
+        
+        dist = HyperbolicDistance()
+        mean = HyperbolicMean()
+        
+        
+        
         return d.neg()
