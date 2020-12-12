@@ -34,7 +34,7 @@ If you have a `RuntimeError` with Proto(FO)MAML and BERT, you can install the `h
 
 ## Citation
 
-If you use this code repository, please consider citing the paper:
+If you use this code repository, please consider citing original paper that implemented the base code of our project:
 ```bib
 @article{holla2020metawsd,
   title={Learning to Learn to Disambiguate: Meta-Learning for Few-Shot Word Sense Disambiguation.},
