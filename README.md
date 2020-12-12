@@ -1,6 +1,6 @@
-# MetaWSD
+# Meta-Learning for NER
 
-This is built upon the base-code for the paper [Learning to Learn to Disambiguate: Meta-Learning for Few-Shot Word Sense Disambiguation](https://arxiv.org/abs/2004.14355).
+This is built upon the base-code for the paper [Learning to Learn to Disambiguate: Meta-Learning for Few-Shot Word Sense Disambiguation](https://arxiv.org/abs/2004.14355). The code will be updated soon to contain more experiments.
 
 
 ## Getting started
