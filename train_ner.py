@@ -37,17 +37,12 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', dest='config_file', type=str, help='Configuration file', required=True)
     parser.add_argument('--multi_gpu', action='store_true')
-    parser.add_argument('--layer', type=str)
-    parser.add_argument('--tune_layers',type=int,action='store',required=True,help="Set the number of layers to freeze while training BERT")
-    parser.add_argument('--exp',action='store',required=True,help="Specify which experiment to run")
-    parser.add_argument('--hidden_size',type=int,action='store',required=True,help="Set the number of hidden layers")
+    parser.add_argument('--tune_layers',type=int,action='store',default=12,help="Set the number of layers to freeze while training BERT")
     args = parser.parse_args()
 
     config = load_config(args.config_file)
     config['multi_gpu'] = args.multi_gpu
     config['learner_params']['fine_tune_layers'] = args.tune_layers
-    config['meta_model'] = args.exp
-    config['learner_params']['hidden_size'] = args.hidden_size
     logger.info('Using configuration: {}'.format(config))
 
     # Set seeds for reproducibility
@@ -120,5 +115,5 @@ if __name__ == '__main__':
     logger.info('Meta-learning completed')
 
     # Meta-testing
-    meta_learner.testing(test_episodes,label_map)
+    meta_learner.testing(test_episodes, label_map)
     logger.info('Meta-testing completed')
