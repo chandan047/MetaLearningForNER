@@ -9,7 +9,7 @@ from torch.utils.data import Subset
 
 from datasets.episode import Episode
 from datasets.wsd_dataset import WordWSDDataset, MetaWSDDataset
-from datasets.ner_dataset import NERSampler, read_examples_from_file, get_labels
+from datasets.ner_dataset import NERSampler,SequentialSampler, read_examples_from_file, get_labels
 from transformers import BertTokenizer
 
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
@@ -62,7 +62,7 @@ def prepare_bert_batch(batch):
         # check
 #         if all([lab == -1 for lab in label_ids]):
 #             print (labels)
-        assert(all([lab == -1 for lab in label_ids]) == False)
+#         assert(all([lab == -1 for lab in label_ids]) == False)
                
         x.append(tokens)
         lengths.append(length)
@@ -139,12 +139,15 @@ def generate_wsd_episodes(dir, n_episodes, n_support_examples, n_query_examples,
 
 
 def generate_ner_episodes(dir, labels_file, n_episodes, n_support_examples, n_query_examples, task, 
-                          meta_train=True, vectors='bert'):
+                          meta_train=False, vectors='bert'):
     episodes = []
     labels = get_labels(labels_file)
     examples, label_map = read_examples_from_file(dir, labels)
-#     print ('label_map', label_map)
-    ner_dataset = NERSampler(examples, labels, label_map, 6, n_support_examples, n_query_examples, n_episodes)
+    print ('label_map', label_map)
+    if meta_train == True:
+        ner_dataset = NERSampler(examples, labels, label_map, 6, n_support_examples, n_query_examples, n_episodes)
+    else:
+        ner_dataset = SequentialSampler(examples, labels, label_map, 6, n_support_examples, n_query_examples, n_episodes)
     for index, ner_data in enumerate(ner_dataset):
         tags, sup_sents, query_sents = ner_data
         
@@ -166,4 +169,4 @@ def generate_ner_episodes(dir, labels_file, n_episodes, n_support_examples, n_qu
                           n_classes=len(labels))
         
         episodes.append(episode)
-    return episodes
+    return episodes,label_map
