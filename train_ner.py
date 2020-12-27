@@ -37,11 +37,17 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', dest='config_file', type=str, help='Configuration file', required=True)
     parser.add_argument('--multi_gpu', action='store_true')
+    parser.add_argument('--layer', type=str)
+    parser.add_argument('--tune_layers',type=int,action='store',required=True,help="Set the number of layers to freeze while training BERT")
+    parser.add_argument('--exp',action='store',required=True,help="Specify which experiment to run")
+    parser.add_argument('--hidden_size',type=int,action='store',required=True,help="Set the number of hidden layers")
     args = parser.parse_args()
 
-    # Load configuration
     config = load_config(args.config_file)
     config['multi_gpu'] = args.multi_gpu
+    config['learner_params']['fine_tune_layers'] = args.tune_layers
+    config['meta_model'] = args.exp
+    config['learner_params']['hidden_size'] = args.hidden_size
     logger.info('Using configuration: {}'.format(config))
 
     # Set seeds for reproducibility
@@ -69,21 +75,21 @@ if __name__ == '__main__':
     
     # Generate episodes for NER
     logger.info('Generating episodes for NER')
-    ner_train_episodes = utils.generate_ner_episodes(dir=ner_train_path,
+    ner_train_episodes, _ = utils.generate_ner_episodes(dir=ner_train_path,
                                                      labels_file=labels_train,
                                                      n_episodes=config['num_train_episodes']['ner'],
                                                      n_support_examples=config['num_shots']['ner'],
                                                      n_query_examples=config['num_test_samples']['ner'],
                                                      task='ner',
                                                      meta_train=True)
-    ner_val_episodes = utils.generate_ner_episodes(dir=ner_val_path,
+    ner_val_episodes, _ = utils.generate_ner_episodes(dir=ner_val_path,
                                                    labels_file=labels_test,
                                                    n_episodes=config['num_val_episodes']['ner'],
                                                    n_support_examples=config['num_shots']['ner'],
                                                    n_query_examples=config['num_test_samples']['ner'],
                                                    task='ner',
-                                                   meta_train=False)
-    ner_test_episodes = utils.generate_ner_episodes(dir=ner_test_path,
+                                                   meta_train=True)
+    ner_test_episodes, label_map = utils.generate_ner_episodes(dir=ner_test_path,
                                                     labels_file=labels_test,
                                                     n_episodes=config['num_test_episodes']['ner'],
                                                     n_support_examples=config['num_shots']['ner'],
@@ -114,5 +120,5 @@ if __name__ == '__main__':
     logger.info('Meta-learning completed')
 
     # Meta-testing
-    meta_learner.testing(test_episodes)
+    meta_learner.testing(test_episodes,label_map)
     logger.info('Meta-testing completed')
