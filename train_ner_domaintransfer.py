@@ -27,7 +27,8 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
     config['base_path'] = os.path.dirname(os.path.abspath(__file__))
-    config['stamp'] = "stable" # str(datetime.now()).replace(':', '-').replace(' ', '_')
+#     config['stamp'] = str(datetime.now()).replace(':', '-').replace(' ', '_')
+    config['stamp'] = '2020-12-26_03-59-40.896606'
     return config
 
 
@@ -56,6 +57,8 @@ if __name__ == '__main__':
 
     # Path for NER dataset
     ner_base_path = os.path.join(config['base_path'], '../data/ontonotes-bert/')
+    wnut_base_path = os.path.join(config['base_path'], '../data/mixed/')
+    i2b2_base_path = os.path.join(config['base_path'], '../data/mixed/')
 #     ner_train_path = os.path.join(ner_base_path, 'dev-g1-traincls-{}shot.txt'.format(str(config['num_test_samples']['ner'])))
 #     ner_val_path = os.path.join(ner_base_path, 'test-g1-testcls-{}shot.txt'.format(str(config['num_test_samples']['ner'])))
 #     ner_test_path = os.path.join(ner_base_path, 'test-g1-testcls-{}shot.txt'.format(str(config['num_test_samples']['ner'])))
@@ -63,28 +66,32 @@ if __name__ == '__main__':
     ner_train_path = os.path.join(ner_base_path, 'train.txt')
     ner_val_path = os.path.join(ner_base_path, 'dev.txt')
     ner_test_path = os.path.join(ner_base_path, 'test.txt')
+    wnut_test_path = os.path.join(wnut_base_path, 'test-wnut.txt')
+    i2b2_test_path = os.path.join(wnut_base_path, 'test-i2b2.txt')
 
-    labels_train = os.path.join(ner_base_path, 'labels-g1-train.txt')
-    labels_test = os.path.join(ner_base_path, 'labels-g1-test.txt')
+    labels_train = os.path.join(ner_base_path, 'labels.txt')
+    labels_test = os.path.join(ner_base_path, 'labels.txt')
+    wnut_labels_test = os.path.join(wnut_base_path, 'labels-wnut.txt')
+    i2b2_labels_test = os.path.join(wnut_base_path, 'labels-i2b2.txt')
     
     # Generate episodes for NER
     logger.info('Generating episodes for NER')
-    ner_train_episodes, _ = utils.generate_ner_episodes(dir=ner_train_path,
+    ner_train_episodes = utils.generate_ner_episodes(dir=ner_train_path,
                                                      labels_file=labels_train,
                                                      n_episodes=config['num_train_episodes']['ner'],
                                                      n_support_examples=config['num_shots']['ner'],
                                                      n_query_examples=config['num_test_samples']['ner'],
                                                      task='ner',
                                                      meta_train=True)
-    ner_val_episodes, _ = utils.generate_ner_episodes(dir=ner_val_path,
+    ner_val_episodes = utils.generate_ner_episodes(dir=ner_val_path,
                                                    labels_file=labels_test,
                                                    n_episodes=config['num_val_episodes']['ner'],
                                                    n_support_examples=config['num_shots']['ner'],
                                                    n_query_examples=config['num_test_samples']['ner'],
                                                    task='ner',
                                                    meta_train=False)
-    ner_test_episodes, label_map = utils.generate_ner_episodes(dir=ner_test_path,
-                                                    labels_file=labels_test,
+    ner_test_episodes = utils.generate_ner_episodes(dir=i2b2_test_path,
+                                                    labels_file=i2b2_labels_test,
                                                     n_episodes=config['num_test_episodes']['ner'],
                                                     n_support_examples=config['num_shots']['ner'],
                                                     n_query_examples=config['num_test_samples']['ner'],
