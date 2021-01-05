@@ -64,13 +64,14 @@ class BERTSequenceModel(nn.Module):
     def __init__(self, model_params):
         super(BERTSequenceModel, self).__init__()
         self.embed_dim = model_params['embed_dim']
-        self.hidden_size = model_params['hidden_size']
+#         self.hidden_size = model_params['hidden_size']
         self.dropout_ratio = model_params.get('dropout_ratio', 0)
         self.n_tunable_layers = model_params.get('fine_tune_layers', None)
         self.bert = BertModel.from_pretrained('bert-base-cased')
-        self.linear = nn.Sequential(nn.Linear(self.embed_dim, self.hidden_size),
-                                    nn.ReLU(),
-                                    nn.Dropout(p=self.dropout_ratio))
+        # self.bert = BertModel.from_pretrained('span-bert')
+#         self.linear = nn.Sequential(nn.Linear(self.embed_dim, self.hidden_size),
+#                                     nn.ReLU(),
+#                                     nn.Dropout(p=self.dropout_ratio))
 
         self.bert.pooler.dense.weight.requires_grad = False
         self.bert.pooler.dense.bias.requires_grad = False
@@ -85,5 +86,5 @@ class BERTSequenceModel(nn.Module):
         attention_mask = (input.detach() != 0).float()
         output, _ = self.bert(input, attention_mask=attention_mask)
         output = output[:, 1:-1, :]  # Ignore the output of the CLS and SEP tokens
-        output = self.linear(output)
+        # output = self.linear(output)
         return output
