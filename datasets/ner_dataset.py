@@ -46,7 +46,7 @@ class NERSampler:
             classes = self._sample_classes()
 #             print ("sampled classes", classes)
             tags = defaultdict(lambda:-1)
-            # tags['O'] = 0
+            tags['O'] = 0
             for cls in classes:
                 if cls not in tags:
                     tags[cls] = len(tags)
@@ -87,10 +87,14 @@ class NERSampler:
         return sent_class_map, class_sent_map
 
     def tagged_labels(self, labels, tags):
-        return [
-            tags[lab[2:]] if len(lab) > 2 else tags[lab] 
-            for lab in labels
-        ]
+        t_labels = []
+        for lab in labels:
+            if len(lab) > 2: lab = lab[2:]
+            if lab not in tags:
+                t_labels.append(-1)
+            else:
+                t_labels.append(tags[lab])
+        return t_labels
     
     def sample_sentences(self, classes, tags):
         """
@@ -134,11 +138,11 @@ class NERSampler:
         return MetaNERDataset(
             [self.dataset[d].words for d in sup_sents],
             [self.tagged_labels(self.dataset[d].labels, tags) for d in sup_sents], 
-            self.n_cls
+            self.n_cls + 1
         ), MetaNERDataset(
             [self.dataset[d].words for d in query_sents],
             [self.tagged_labels(self.dataset[d].labels, tags) for d in query_sents],
-            self.n_cls
+            self.n_cls + 1
         )
 
     def _sample_classes(self):
@@ -165,7 +169,6 @@ class InputExample(object):
 
     def __init__(self, guid, words, labels):
         """Constructs a InputExample.
-
         Args:
             guid: Unique id for the example.
             words: list. The words of the sequence.
@@ -407,3 +410,91 @@ class SequentialSampler:
         sorted_list = sorted_list[:self.n_cls]
         sorted_list = sorted(sorted_list, key=lambda p: p[1])
         return [cls for cls, _ in sorted_list]
+
+
+class SupervisedSampler:
+    def __init__(self, dataset, labels, batch_size=30):
+        print (f'Number of examples in NER dataset is {len(dataset)}')
+        self.labels = labels
+        self.classes = []
+        for lab in labels:
+            if len(lab) > 2:
+                self.classes.append(lab[2:])
+        self.batch_size = batch_size
+        self.n_batch = len(dataset) // self.batch_size
+        self.dataset = dataset
+        self.sent_class_map, self.class_sent_map = self._get_sent_class_maps(dataset)
+        
+        # stats on data
+        print ('## STATISTICS ##')
+        for cls in self.class_sent_map:
+            print (cls, len(self.class_sent_map[cls]))
+        
+        self.data = self.make_batches()
+
+    def make_batches(self):
+        """
+        Sample mini-batches for episode training
+        """
+        batches = []
+        
+        tags = defaultdict(lambda:-1)
+        tags['O'] = 0
+        for cls in self.classes:
+            if cls not in tags:
+                tags[cls] = len(tags)
+        
+        self.tags = tags
+        
+        random.shuffle(self.dataset)
+        
+        for i in trange(self.n_batch):
+            batch = self.sample_batch_sentences(i*self.batch_size, self.batch_size)
+            batches.append(batch)
+        
+        return batches
+
+    def __getitem__(self, index):
+        return self.tags, self.data[index]
+            
+    def __len__(self):
+        return self.n_batch
+
+    @staticmethod
+    def _get_sent_class_maps(dataset):
+        # map from a sentence Id to a list of pairs with
+        # B-Xs and the freqs of B-X in the sentence
+        sent_class_map = defaultdict(list)
+        # map from B-X to a list of pairs with
+        # sentence ids and the freqs of B-X in the sentence
+        class_sent_map = defaultdict(list)
+        for i, sent in enumerate(dataset):
+            _, tags = sent.words, sent.labels
+            class_freqs = Counter()
+            for tag in tags:
+                if tag.startswith('B-'):
+                    # we only store the `X` part of `B-X`
+                    class_freqs[tag[2:]] += 1
+            for cls, freq in class_freqs.items():
+                sent_class_map[i].append((cls, freq))
+                class_sent_map[cls].append((i, freq))
+        return sent_class_map, class_sent_map
+
+    def tagged_labels(self, labels, tags):
+        t_labels = []
+        for lab in labels:
+            if len(lab) > 2: lab = lab[2:]
+            if lab not in tags:
+                t_labels.append(-1)
+            else:
+                t_labels.append(tags[lab])
+        return t_labels
+    
+    def sample_batch_sentences(self, startIdx, batch_size):
+        sents = list(range(startIdx, startIdx + batch_size))
+        return MetaNERDataset(
+            [self.dataset[d].words for d in sents],
+            [self.tagged_labels(self.dataset[d].labels, self.tags) for d in sents], 
+            len(self.classes)
+        )
+    
