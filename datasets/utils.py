@@ -9,7 +9,7 @@ from torch.utils.data import Subset
 
 from datasets.episode import Episode
 from datasets.wsd_dataset import WordWSDDataset, MetaWSDDataset
-from datasets.ner_dataset import NERSampler,SequentialSampler, read_examples_from_file, get_labels
+from datasets.ner_dataset import NERSampler, SequentialSampler, SupervisedSampler, read_examples_from_file, get_labels
 from transformers import BertTokenizer
 
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
@@ -144,14 +144,15 @@ def generate_ner_episodes(dir, labels_file, n_episodes, n_support_examples, n_qu
     labels = get_labels(labels_file)
     examples, label_map = read_examples_from_file(dir, labels)
     print ('label_map', label_map)
+    
     if meta_train == True:
         ner_dataset = NERSampler(examples, labels, label_map, 6, n_support_examples, n_query_examples, n_episodes)
     else:
         ner_dataset = SequentialSampler(examples, labels, label_map, 6, n_support_examples, n_query_examples, n_episodes)
+        
     for index, ner_data in enumerate(ner_dataset):
         tags, sup_sents, query_sents = ner_data
         
-#         print (len(tags), len(sup_sents.labels), len(query_sents.labels))
         if vectors == 'bert':
             support_loader = data.DataLoader(sup_sents, batch_size=6*n_support_examples, 
                                              collate_fn=lambda pb: prepare_bert_batch(pb))
@@ -162,11 +163,35 @@ def generate_ner_episodes(dir, labels_file, n_episodes, n_support_examples, n_qu
                                              collate_fn=prepare_batch)
             query_loader = data.DataLoader(query_sents, batch_size=6*n_query_examples, 
                                              collate_fn=prepare_batch)
+        
         episode = Episode(support_loader=support_loader,
                           query_loader=query_loader,
                           base_task=task,
                           task_id=task + '-' + str(index),
-                          n_classes=len(labels))
-        
+                          n_classes=len(tags),
+                          tags=tags
+                         )
         episodes.append(episode)
-    return episodes,label_map
+        
+    return episodes, label_map
+
+
+def generate_ner_batches(dir, labels_file, batch_size, meta_train=True, vectors='bert'):
+    batches = []
+    labels = get_labels(labels_file)
+    examples, label_map = read_examples_from_file(dir, labels)
+    ner_dataset = SupervisedSampler(examples, labels, batch_size)
+    
+    for index, ner_data in enumerate(ner_dataset):
+        tags, batch = ner_data
+        
+        if vectors == 'bert':
+            dataloader = data.DataLoader(batch, batch_size=batch_size, 
+                                             collate_fn=lambda pb: prepare_bert_batch(pb))
+        else:
+            dataloader = data.DataLoader(batch, batch_size=batch_size, 
+                                             collate_fn=prepare_batch)
+        
+        batches.append(dataloader)
+    
+    return batches, tags
