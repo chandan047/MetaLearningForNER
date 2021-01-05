@@ -5,6 +5,7 @@ import torchtext
 from torch import nn
 from torch import optim
 
+import pdb
 import coloredlogs
 import logging
 import os
@@ -68,6 +69,7 @@ class SeqPrototypicalNetwork(nn.Module):
 
     def initialize_optimizer_scheduler(self):
         learner_params = [p for p in self.learner.parameters() if p.requires_grad]
+        # pdb.set_trace()
         if isinstance(self.learner, BERTSequenceModel):
             self.optimizer = AdamW(learner_params, lr=self.lr, weight_decay=self.weight_decay)
             self.lr_scheduler = get_constant_schedule_with_warmup(self.optimizer, num_warmup_steps=100)
@@ -101,7 +103,13 @@ class SeqPrototypicalNetwork(nn.Module):
         return batch_x, batch_len, batch_y
 
     def forward(self, episodes, updates=1, testing=False):
+        if testing:
+            self.eval()
+        else:
+            self.train()
+            
         query_losses, query_accuracies, query_precisions, query_recalls, query_f1s = [], [], [], [], []
+        all_predictions, all_labels = [], []
         n_episodes = len(episodes)
 
         for episode_id, episode in enumerate(episodes):
@@ -109,7 +117,6 @@ class SeqPrototypicalNetwork(nn.Module):
             batch_x, batch_len, batch_y = next(iter(episode.support_loader))
             batch_x, batch_len, batch_y = self.vectorize(batch_x, batch_len, batch_y)
 
-            self.train()
             support_repr, support_label = [], []
 
             batch_x_repr = self.learner(batch_x, batch_len)
@@ -120,7 +127,7 @@ class SeqPrototypicalNetwork(nn.Module):
 
             # Run on query
             query_loss = 0.0
-            all_predictions, all_labels = [], []
+            
             for module in self.learner.modules():
                 if isinstance(module, nn.Dropout):
                     module.eval()
@@ -129,6 +136,9 @@ class SeqPrototypicalNetwork(nn.Module):
                 batch_x, batch_len, batch_y = self.vectorize(batch_x, batch_len, batch_y)
                 batch_x_repr = self.learner(batch_x, batch_len)
                 output = self._normalized_distances(prototypes, batch_x_repr)
+                
+                batch_size, seq_len = output.shape[0], output.shape[1]
+                
                 output = output.view(output.size()[0] * output.size()[1], -1)
                 batch_y = batch_y.view(-1)
                 loss = self.loss_fn[episode.base_task](output, batch_y)
@@ -140,19 +150,32 @@ class SeqPrototypicalNetwork(nn.Module):
                     self.optimizer.step()
                     self.lr_scheduler.step()
 
-                relevant_indices = torch.nonzero(batch_y != -1).view(-1).detach()
-                all_predictions.extend(make_prediction(output[relevant_indices]).cpu())
-                all_labels.extend(batch_y[relevant_indices].cpu())
+                output = output.view(batch_size, seq_len, -1)
+                batch_y = batch_y.view(batch_size, seq_len)
+
+                predictions, labels = [], []
+
+                for bid in range(batch_size):
+                    relevant_indices = torch.nonzero(batch_y[bid] != -1).view(-1).detach()
+                    predictions.append(list(make_prediction(output[bid][relevant_indices]).detach().cpu().numpy()))
+                    # pdb.set_trace()
+                    labels.append(list(batch_y[bid][relevant_indices].detach().cpu().numpy()))
+
+                    
+                all_predictions.extend(predictions)
+                all_labels.extend(labels)
 
             query_loss /= n_batch + 1
 
+            # pdb.set_trace()
+            
             # Calculate metrics
-            accuracy, precision, recall, f1_score = utils.calculate_metrics(all_predictions,
-                                                                            all_labels, binary=False)
+            accuracy, precision, recall, f1_score = utils.calculate_seqeval_metrics(predictions,
+                                                                            labels, tags=episode.tags, binary=False)
 
-            logger.info('Episode {}/{}, task {} [query set]: Loss = {:.5f}, accuracy = {:.5f}, precision = {:.5f}, '
-                        'recall = {:.5f}, F1 score = {:.5f}'.format(episode_id + 1, n_episodes, episode.task_id,
-                                                                    query_loss, accuracy, precision, recall, f1_score))
+#             logger.info('Episode {}/{}, task {} [query set]: Loss = {:.5f}, accuracy = {:.5f}, precision = {:.5f}, '
+#                         'recall = {:.5f}, F1 score = {:.5f}'.format(episode_id + 1, n_episodes, episode.task_id,
+#                                                                     query_loss, accuracy, precision, recall, f1_score))
 
             query_losses.append(query_loss)
             query_accuracies.append(accuracy)
@@ -160,12 +183,12 @@ class SeqPrototypicalNetwork(nn.Module):
             query_recalls.append(recall)
             query_f1s.append(f1_score)
 
-        return query_losses, query_accuracies, query_precisions, query_recalls, query_f1s
+        return query_losses, query_accuracies, query_precisions, query_recalls, query_f1s, all_predictions, all_labels
 
     def _build_prototypes(self, data_repr, data_label, num_outputs):
-        print (data_repr[0].shape)
         n_dim = data_repr[0].shape[2]
-        data_repr = torch.cat(tuple([x.view(-1, n_dim) for x in data_repr]), dim=0)
+        # pdb.set_trace()
+        data_repr = torch.cat(tuple([x.contiguous().view(-1, n_dim) for x in data_repr]), dim=0)
         data_label = torch.cat(tuple([y.view(-1) for y in data_label]), dim=0)
 
         prototypes = torch.zeros((num_outputs, n_dim), device=self.device)
