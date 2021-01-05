@@ -1,8 +1,26 @@
 import copy
 import numpy as np
 
+import pdb
+
 import torch
+import torch.nn as nn
 from sklearn import metrics
+from seqeval import metrics as seq_metrics
+
+def calculate_seqeval_metrics(predictions, labels, tags=None, binary=False):
+    if tags is not None:
+        map2label = {v:k for k,v in tags.items()}
+        # pdb.set_trace()
+        for i in range(len(predictions)):
+            predictions[i] = [map2label[v] for v in predictions[i]]
+            labels[i] = [map2label[v] for v in labels[i]]
+    
+    accuracy = seq_metrics.accuracy_score(labels, predictions)
+    precision = seq_metrics.precision_score(labels, predictions)
+    recall = seq_metrics.recall_score(labels, predictions)
+    f1_score = seq_metrics.f1_score(labels, predictions)
+    return accuracy, precision, recall, f1_score
 
 
 def calculate_metrics(predictions, labels, binary=False):
@@ -36,7 +54,7 @@ def replicate_model_to_gpus(model, device_ids):
 class EuclideanDistance(nn.Module):
     """Implement a EuclideanDistance object."""
 
-    def forward(self, mat_1: Tensor, mat_2: Tensor) -> Tensor:  # type: ignore
+    def forward(self, mat_1, mat_2):
         """Returns the squared euclidean distance between each
         element in mat_1 and each element in mat_2.
         Parameters
@@ -58,7 +76,7 @@ class EuclideanDistance(nn.Module):
 class EuclideanMean(nn.Module):
     """Implement a EuclideanMean object."""
 
-    def forward(self, data: Tensor) -> Tensor:  # type: ignore
+    def forward(self, data):
         """Performs a forward pass through the network.
         Parameters
         ----------
@@ -127,7 +145,7 @@ class HyperbolicDistance(nn.Module):
     """Implement a HyperbolicDistance object.
     """
 
-    def forward(self, mat_1: Tensor, mat_2: Tensor) -> Tensor:  # type: ignore
+    def forward(self, mat_1, mat_2):
         """Returns the squared euclidean distance between each
         element in mat_1 and each element in mat_2.
         Parameters
@@ -156,7 +174,7 @@ class HyperbolicDistance(nn.Module):
 class HyperbolicMean(nn.Module):
     """Compute the mean point in the hyperboloid model."""
 
-    def forward(self, data: Tensor) -> Tensor:  # type: ignore
+    def forward(self, data):
         """Performs a forward pass through the network.
         Parameters
         ----------
