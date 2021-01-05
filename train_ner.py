@@ -27,7 +27,7 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
     config['base_path'] = os.path.dirname(os.path.abspath(__file__))
-    config['stamp'] = str(datetime.now()).replace(':', '-').replace(' ', '_')
+    config['stamp'] = "stable" # str(datetime.now()).replace(':', '-').replace(' ', '_')
     return config
 
 
@@ -37,12 +37,11 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', dest='config_file', type=str, help='Configuration file', required=True)
     parser.add_argument('--multi_gpu', action='store_true')
-    parser.add_argument('--tune_layers',type=int,action='store',default=12,help="Set the number of layers to freeze while training BERT")
     args = parser.parse_args()
 
+    # Load configuration
     config = load_config(args.config_file)
     config['multi_gpu'] = args.multi_gpu
-    config['learner_params']['fine_tune_layers'] = args.tune_layers
     logger.info('Using configuration: {}'.format(config))
 
     # Set seeds for reproducibility
@@ -83,7 +82,7 @@ if __name__ == '__main__':
                                                    n_support_examples=config['num_shots']['ner'],
                                                    n_query_examples=config['num_test_samples']['ner'],
                                                    task='ner',
-                                                   meta_train=True)
+                                                   meta_train=False)
     ner_test_episodes, label_map = utils.generate_ner_episodes(dir=ner_test_path,
                                                     labels_file=labels_test,
                                                     n_episodes=config['num_test_episodes']['ner'],
@@ -115,5 +114,5 @@ if __name__ == '__main__':
     logger.info('Meta-learning completed')
 
     # Meta-testing
-    meta_learner.testing(test_episodes, label_map)
+    meta_learner.testing(test_episodes)
     logger.info('Meta-testing completed')
