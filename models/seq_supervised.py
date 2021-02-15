@@ -61,6 +61,9 @@ class SeqSupervisedNetwork(nn.Module):
             self.learner.load_state_dict(torch.load(
                 os.path.join(self.base_path, 'saved_models', config['trained_learner'])
             ))
+            self.classifier.load_state_dict(torch.load(
+                os.path.join(self.base_path, 'saved_models', config['trained_classifier'])
+            ))
             logger.info('Loaded trained learner model {}'.format(config['trained_learner']))
 
         self.device = torch.device(config.get('device', 'cpu'))
@@ -108,7 +111,7 @@ class SeqSupervisedNetwork(nn.Module):
         batch_y = torch.tensor(batch_y).to(self.device)
         return batch_x, batch_len, batch_y
 
-    def forward(self, dataloader, tags=None, testing=False):
+    def forward(self, dataloader, tags=None, testing=False, writer=None):
         if not testing:
             self.train()
         else:
@@ -131,7 +134,7 @@ class SeqSupervisedNetwork(nn.Module):
             batch_y = batch_y.view(-1)
             loss = self.loss_fn['ner'](output, batch_y)
             avg_loss += loss.item()
-
+            
             if not testing:
                 self.optimizer.zero_grad()
                 loss.backward(retain_graph=True)
@@ -152,7 +155,12 @@ class SeqSupervisedNetwork(nn.Module):
             accuracy, precision, recall, f1_score = utils.calculate_seqeval_metrics(predictions,
                                                                             labels, tags, binary=False)
 
-            logger.info('Batch {}/{}, task {} [supervised]: Loss = {:.5f}, accuracy = {:.5f}, precision = {:.5f}, '
+            if writer is not None:
+                writer.add_scalar('Loss/iter', avg_loss / (batch_id+1), global_step=batch_id + 1)
+                writer.add_scalar('F1/iter', f1_score, global_step=batch_id + 1)
+            
+            if (batch_id + 1) % 100 == 0:
+                logger.info('Batch {}/{}, task {} [supervised]: Loss = {:.5f}, accuracy = {:.5f}, precision = {:.5f}, '
                         'recall = {:.5f}, F1 score = {:.5f}'.format(batch_id + 1, len(dataloader), 'ner',
                                                                     loss.item(), accuracy, precision, recall, f1_score))
             

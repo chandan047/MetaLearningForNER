@@ -10,7 +10,7 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 
 from models.seq_proto import SeqPrototypicalNetwork
-from models.seq_proto_online import SeqPrototypicalOnlineNetwork
+# from models.seq_proto_online import SeqPrototypicalOnlineNetwork
 from models import utils
 
 logger = logging.getLogger('ProtoLearningLog')

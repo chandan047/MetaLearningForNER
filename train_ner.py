@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+from tqdm import trange
 import warnings
 from argparse import ArgumentParser
 
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     random.seed(42)
 
     # Episodes for meta-training, meta-validation and meta-testing
-    train_episodes, val_episodes, test_episodes = [], [], []
+    train_episodes, val_episodes = [], []
 
     # Directory for saving models
     os.makedirs(os.path.join(config['base_path'], 'saved_models'), exist_ok=True)
@@ -83,16 +84,9 @@ if __name__ == '__main__':
                                                    n_query_examples=config['num_test_samples']['ner'],
                                                    task='ner',
                                                    meta_train=False)
-    ner_test_episodes, label_map = utils.generate_ner_episodes(dir=ner_test_path,
-                                                    labels_file=labels_test,
-                                                    n_episodes=config['num_test_episodes']['ner'],
-                                                    n_support_examples=config['num_shots']['ner'],
-                                                    n_query_examples=config['num_test_samples']['ner'],
-                                                    task='ner',
-                                                    meta_train=False)
+    
     train_episodes.extend(ner_train_episodes)
     val_episodes.extend(ner_val_episodes)
-    test_episodes.extend(ner_test_episodes)
     logger.info('Finished generating episodes for NER')
 
     # Initialize meta learner
@@ -114,5 +108,13 @@ if __name__ == '__main__':
     logger.info('Meta-learning completed')
 
     # Meta-testing
-    meta_learner.testing(test_episodes)
+    for _ in trange(5):
+        test_episodes, label_map = utils.generate_ner_episodes(dir=ner_test_path,
+                                                        labels_file=labels_test,
+                                                        n_episodes=config['num_test_episodes']['ner'],
+                                                        n_support_examples=config['num_shots']['ner'],
+                                                        n_query_examples=config['num_test_samples']['ner'],
+                                                        task='ner',
+                                                        meta_train=False)
+        meta_learner.testing(test_episodes, label_map)
     logger.info('Meta-testing completed')

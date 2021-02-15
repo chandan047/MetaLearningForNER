@@ -16,7 +16,7 @@ class SupervisedNetwork:
     def __init__(self, config):
         now = datetime.now()
         date_time = now.strftime("%m-%d-%H-%M-%S")
-        self.tensorboard_writer = SummaryWriter(log_dir='runs/ProtoNet-' + date_time)
+        self.tensorboard_writer = SummaryWriter(log_dir='runs/Supervised-' + date_time)
         
         self.base_path = config['base_path']
         self.stamp = config['stamp']
@@ -33,12 +33,14 @@ class SupervisedNetwork:
         best_loss = float('inf')
         best_f1 = 0
         patience = 0
-        model_path = os.path.join(self.base_path, 'saved_models', 'Supervised-{}.h5'.format(self.stamp))
+        model_path = os.path.join(self.base_path, 'saved_models', 'SupervisedLearner-{}.h5'.format(self.stamp))
         classifier_path = os.path.join(self.base_path, 'saved_models', 'SupervisedClassifier-{}.h5'.format(self.stamp))
-        logger.info('Model name: Supervised-{}.h5'.format(self.stamp))
+        logger.info('Model name: SupervisedLearner-{}.h5'.format(self.stamp))
         for epoch in range(self.meta_epochs):
             logger.info('Starting epoch {}/{}'.format(epoch + 1, self.meta_epochs))
-            avg_loss, avg_accuracy, avg_precision, avg_recall, avg_f1 = self.model(train_dataloader, tags=tags)
+            avg_loss, avg_accuracy, avg_precision, avg_recall, avg_f1 = self.model(train_dataloader, 
+                                                                                   tags=tags, 
+                                                                                   writer=self.tensorboard_writer)
 
             logger.info('Train epoch {}: Avg loss = {:.5f}, avg accuracy = {:.5f}, avg precision = {:.5f}, '
                         'avg recall = {:.5f}, avg F1 score = {:.5f}'.format(epoch + 1, avg_loss, avg_accuracy,
@@ -79,17 +81,12 @@ class SupervisedNetwork:
                     self.tensorboard_writer.add_histogram('Grads/' + name, param.grad.data.view(-1),
                                                      global_step=epoch + 1)
 
-        # self.model.learner.load_state_dict(torch.load(model_path))
-        # self.model.classifier.load_state_dict(torch.load(classifier_path))
+        self.model.learner.load_state_dict(torch.load(model_path))
+        self.model.classifier.load_state_dict(torch.load(classifier_path))
         return best_f1
 
     def testing(self, test_dataloader, tags):
         logger.info('---------- Supervised testing starts here ----------')
-        model_path = os.path.join(self.base_path, 'saved_models', 'Supervised-{}.h5'.format(self.stamp))
-        classifier_path = os.path.join(self.base_path, 'saved_models', 'SupervisedClassifier-{}.h5'.format(self.stamp))
-        
-        self.model.learner.load_state_dict(torch.load(model_path))
-        self.model.classifier.load_state_dict(torch.load(classifier_path))
         
         _, accuracy, precision, recall, f1_score = self.model(test_dataloader, tags=tags, testing=True)
 

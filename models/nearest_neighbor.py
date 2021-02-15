@@ -1,5 +1,6 @@
 import coloredlogs
 import logging
+from tqdm import tqdm
 import torch
 import torchtext
 import pdb
@@ -66,15 +67,14 @@ class NearestNeighborClassifier():
         return 0
 
     def testing(self, test_episodes, label_map):
-        # self.bert.load_state_dict(torch.load('MetaWSD/saved_models/ProtoNet-2020-12-27_17-14-40.938323.h5'))
-        self.bert.load_state_dict(torch.load('MetaWSD/saved_models/Supervised-stable.h5'))
+        self.bert.load_state_dict(torch.load('MetaLearningForNER/saved_models/SupervisedLearner-stable.h5'))
         
         map_to_label = {v:k for k,v in label_map.items()}
         
 #         episode_accuracies, episode_precisions, episode_recalls, episode_f1s = [], [], [], []
         all_true_labels = []
         all_predictions = []
-        for episode_id, episode in enumerate(test_episodes):
+        for episode_id, episode in enumerate(tqdm(test_episodes)):
             batch_x, batch_len, batch_y = next(iter(episode.support_loader))
             support_repr, _, support_labels = self.vectorize(batch_x, batch_len, batch_y)
             support_repr = support_repr.reshape(support_repr.shape[0] * support_repr.shape[1], -1)
@@ -113,9 +113,9 @@ class NearestNeighborClassifier():
             precision = precision_score(seq_true_labels, seq_predictions)
             recall = recall_score(seq_true_labels, seq_predictions)
             f1 = f1_score(seq_true_labels, seq_predictions)
-            logger.info('Episode {}/{}, task {} [query set]: Accuracy = {:.5f}, precision = {:.5f}, '
-                        'recall = {:.5f}, F1 score = {:.5f}'.format(episode_id + 1, len(test_episodes), episode.task_id,
-                                                                    accuracy, precision, recall, f1))
+            # logger.info('Episode {}/{}, task {} [query set]: Accuracy = {:.5f}, precision = {:.5f}, '
+            #             'recall = {:.5f}, F1 score = {:.5f}'.format(episode_id + 1, len(test_episodes), episode.task_id,
+            #                                                         accuracy, precision, recall, f1))
 
 #             episode_accuracies.append(accuracy)
 #             episode_precisions.append(precision)

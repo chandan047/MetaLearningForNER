@@ -15,5 +15,5 @@ num_train_episodes:
 num_val_episodes:
   ner: 10
 num_test_episodes:
-  ner: 30
+  ner: 1
 device: cuda:0,1

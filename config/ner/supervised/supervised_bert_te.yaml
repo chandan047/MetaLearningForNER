@@ -1,0 +1,21 @@
+meta_learner: supervised
+meta_model: seq
+learner_model: bert
+learner_params:
+  num_outputs:
+    ner: 13
+  embed_dim: 768
+  fine_tune_layers: 12
+  adapter_mode: False
+  dropout_ratio: 0.1
+vectors: bert
+meta_lr: 0.00005
+batch_size: 32
+eval_batch_size: 32
+gradient_accumulation_steps: 1
+num_meta_epochs: 1
+early_stopping: 2
+span_pred: False
+device: cuda:0
+# trained_learner: Supervised-g1_hs768_epo1.h5
+# trained_classifier: SupervisedClassifier-g1_hs768_epo1.h5
